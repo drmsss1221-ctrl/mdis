@@ -1,0 +1,258 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>STP Control Dashboard // Antigravity</title>
+    <!-- Geist Mono — Antigravity design language typeface -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="./styles.css" />
+    <!-- INSTANT HIDE: keep dashboard invisible until auth passes (prevents flash) -->
+    <style id="ag-instant-hide">
+      body { visibility: hidden; }
+      #ag-auth-overlay, #ag-net-loader { visibility: visible !important; }
+    </style>
+    <script>
+      // Remove the instant-hide style only after auth overlay is ready.
+      // enhancements.js will remove this element after calling revealDashboard().
+      // This fires synchronously so no content is ever briefly painted.
+      document.addEventListener('DOMContentLoaded', function() {
+        document.body.style.visibility = 'visible';
+        var s = document.getElementById('ag-instant-hide');
+        if (s) s.remove();
+      });
+    </script>
+  </head>
+  <body>
+    <div class="page-shell">
+
+      <!-- ZONE 1: ALERTS & SYSTEM STATUS -->
+      <header class="hero">
+        <!-- STP Logo on main page -->
+        <div class="ag-main-logo-bar">
+          <img src="./stp-logo.png" alt="STP Logo" class="ag-main-logo" />
+          <span class="ag-main-logo-label">STP // CONTROL DASHBOARD</span>
+        </div>
+        <div>
+          <p class="eyebrow">STP monitoring</p>
+          <h1>Control dashboard for paired inlet and outlet sewage parameters</h1>
+          <p class="subtitle">
+            Track inlet and outlet values for COD, BOD, TSS, TDS, pH, nitrate,
+            and fecal coliform, compare them against the acceptable range, and
+            trigger mandatory enforcement laws when limits are exceeded.
+          </p>
+        </div>
+        <div class="hero-card">
+          <div class="hero-card__label">Current plant state</div>
+          <div id="plant-state" class="hero-card__state">Normal</div>
+          <div id="plant-message" class="hero-card__message"></div>
+          <div id="sync-status" class="sync-status">Live sync idle</div>
+        </div>
+      </header>
+
+      <section class="panel panel--wide">
+          <div class="panel__header">
+            <h2 class="icon-text">
+              <svg class="section-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 4 L14 8 V14 H6 V8 Z M10 3 V4 M8 15 V16 L10 18 L12 16 V15" /></svg>
+              Operational Rules
+            </h2>
+            <p>Mandatory enforcement laws based on paired inlet/outlet readings</p>
+          </div>
+        <div class="rules">
+          <article>
+            <h3>Law 01: Solid dilution mandate</h3>
+            <p>
+              If TSS or related solids rise above the acceptable limit, treated
+              water must be pumped back into the system until compliance is
+              restored.
+            </p>
+          </article>
+          <article>
+            <h3>Law 02 / 03: Residence time stop</h3>
+            <p>
+              If BOD or COD exceed the limit, inflow must be stopped and the
+              plant must remain on hold until microbial degradation restores the
+              readings.
+            </p>
+          </article>
+          <article>
+            <h3>Law 04 / 05 / 06 / 07: Chemical and hygiene control</h3>
+            <p>
+              pH, nitrate, TDS, and fecal coliform deviations trigger mandatory
+              correction, discharge hold, or disinfection escalation before the
+              system can resume.
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <!-- ZONE 2: LIVE PARAMETER DATA -->
+      <section class="panel panel--wide">
+        <div class="panel__header">
+          <h2 class="icon-text">
+            <svg class="section-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="4" y="4" width="5" height="5" /><rect x="11" y="4" width="5" height="5" /><rect x="4" y="11" width="5" height="5" /><rect x="11" y="11" width="5" height="5" /></svg>
+            Dashboard
+          </h2>
+          <p>Latest paired inlet/outlet readings and compliance status</p>
+        </div>
+        <div id="summary-grid" class="summary-grid"></div>
+        <div class="table-wrap">
+          <!-- data-table-anchor: target for DATA_DRILLDOWN action button -->
+          <table data-table-anchor>
+            <thead>
+              <tr>
+                <th>Parameter</th>
+                <th>Inlet</th>
+                <th>Outlet</th>
+                <th>Limit</th>
+                <th>Status</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="parameter-table"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- ZONE 3: STP FLOW DIAGRAM -->
+      <section class="panel panel--wide">
+        <div class="panel__header">
+          <h2 class="icon-text">
+            <svg class="section-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 10 H12 L16 6 M12 10 L16 14" /></svg>
+            Flow Diagram
+          </h2>
+          <p>Select any process stage to view live readings and parameters</p>
+        </div>
+        <div id="flow-diagram" class="flow-diagram"></div>
+      </section>
+
+      <!-- ZONE 4: ANALYTICS & TRENDS -->
+      <section class="panel panel--wide" id="analytics-zone">
+        <div class="panel__header">
+          <h2 class="icon-text">
+            <svg class="section-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 17 L17 17 M3 13 L7 9 L11 13 L17 5"/></svg>
+            Analytics & Trends
+          </h2>
+          <p>Distribution of statuses, historical progression, and recent deviations.</p>
+        </div>
+        
+        <div class="analytics-layout">
+          <div class="analytics-col">
+            <h3 class="analytics-title">Compliance Breakdown</h3>
+            <div class="pie-container">
+              <canvas id="compliance-pie-chart" width="240" height="240"></canvas>
+            </div>
+            <div id="compliance-legend" class="pie-legend"></div>
+          </div>
+          
+          <div class="analytics-col span-2">
+            <h3 class="analytics-title">COD & pH Outlet Trends</h3>
+            <div class="trend-container">
+              <canvas id="trend-line-chart" width="600" height="240"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <div class="analytics-row">
+          <h3 class="analytics-title">Recent Threat Events</h3>
+          <div class="table-wrap">
+            <table class="history-table">
+              <thead>
+                <tr>
+                  <th>Timestamp</th>
+                  <th>Parameter</th>
+                  <th>Value</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="history-table-body">
+                <tr><td colspan="4" style="text-align: center;">Loading history...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ZONE 5: LOGS & HISTORY -->
+      <section class="panel panel--wide">
+        <div class="panel__header">
+          <h2 class="icon-text">
+            <svg class="section-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 3 H10 L14 7 V17 H6 Z M10 3 V7 H14 M8 10 H12 M8 13 H12" /></svg>
+            Add Reading
+          </h2>
+          <p>Manual override for testing only. Live data should come from Google Sheets.</p>
+        </div>
+        <form id="reading-form" class="form">
+          <label>
+            COD inlet (mg/L)
+            <input name="cod_inlet" type="number" step="0.01" required />
+          </label>
+          <label>
+            COD outlet (mg/L)
+            <input name="cod_outlet" type="number" step="0.01" required />
+          </label>
+          <label>
+            BOD inlet (mg/L)
+            <input name="bod_inlet" type="number" step="0.01" required />
+          </label>
+          <label>
+            BOD outlet (mg/L)
+            <input name="bod_outlet" type="number" step="0.01" required />
+          </label>
+          <label>
+            TSS inlet (mg/L)
+            <input name="tss_inlet" type="number" step="0.01" required />
+          </label>
+          <label>
+            TSS outlet (mg/L)
+            <input name="tss_outlet" type="number" step="0.01" required />
+          </label>
+          <label>
+            TDS inlet (mg/L)
+            <input name="tds_inlet" type="number" step="0.01" required />
+          </label>
+          <label>
+            TDS outlet (mg/L)
+            <input name="tds_outlet" type="number" step="0.01" required />
+          </label>
+          <label>
+            pH inlet
+            <input name="ph_inlet" type="number" step="0.01" required />
+          </label>
+          <label>
+            pH outlet
+            <input name="ph_outlet" type="number" step="0.01" required />
+          </label>
+          <label>
+            Nitrite + Nitrate inlet (mg/L)
+            <input name="nitrate_inlet" type="number" step="0.01" required />
+          </label>
+          <label>
+            Nitrite + Nitrate outlet (mg/L)
+            <input name="nitrate_outlet" type="number" step="0.01" required />
+          </label>
+          <label>
+            Fecal coliform inlet
+            <input name="fecal_inlet" type="number" step="1" required />
+          </label>
+          <label>
+            Fecal coliform outlet
+            <input name="fecal_outlet" type="number" step="1" required />
+          </label>
+          <button type="submit" class="btn-ben10">
+            <svg style="margin-right:8px; vertical-align:middle;" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            COMMIT_WRITE
+          </button>
+        </form>
+      </section>
+
+    </div>
+
+    <script src="./app.js"></script>
+    <script src="./analytics.js" defer></script>
+    <script src="./scroll-tracker.js" defer></script>
+    <!-- Antigravity enhancement layer — loaded after app.js; app.js is SEALED -->
+    <script src="./enhancements.js" defer></script>
+  </body>
+</html>
